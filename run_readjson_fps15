@@ -1,0 +1,9 @@
+#! /bin/bash
+
+module swap intel gcc
+module load python2/2.7.13
+export PYTHONUSERBASE=$HOME/.usr/local/python/2.7.13
+
+
+python readjson_fps15.py
+

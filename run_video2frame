@@ -1,0 +1,3 @@
+#!/bin/bash
+
+python video2frame.py --video_path="Data/Debate2Night1_1.mp4 Data/Debate2Night1_2.mp4 Data/Debate2Night1_3.mp4 Data/Debate2Night1_4.mp4" --frame_path="Frames_fps15/Debate2Night1/"
