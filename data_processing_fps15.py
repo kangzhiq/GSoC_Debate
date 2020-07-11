@@ -132,7 +132,7 @@ def get_normalization_ref(keypoints, idx_can, ref_kp_dist_lst):
 ## Loading data
 ####################
 
-debate = 'Debate11'
+debate = 'Debate3'
 json_pickle_path = 'json_fps15/{}.pickle'.format(debate)
 ref_dist_path = 'candidate/can_ref_dist.pickle'
 csv_path = 'tables_new/{}.csv'.format(debate)
@@ -284,6 +284,8 @@ for idx_frame in range(0, nb_frame):
                             combined[idx_frame_t][nb_col_head+idx_can*nb_total_field+nb_field+nb_keypoints] = dist
 print 'total number of candidate on screen: ', count_on_screen
 print 'number of opse info assigned: ', count_combined                       
+
+
             
 ####################
 ## Verification combine
@@ -312,7 +314,7 @@ print 'number of opse info assigned: ', count_combined
 #    y = int(info[idx_frame][7+idx_can*nb_field])
 #    h = int(info[idx_frame][8+idx_can*nb_field])
 #    w = int(info[idx_frame][9+idx_can*nb_field])
-##    
+#    
 #idx_frame += 1
 #import matplotlib.pyplot as plt
 #im = cv2.imread("Frames_fps1/{}/frame{:06d}.jpg".format(debate, idx_frame))
@@ -493,6 +495,8 @@ print 'Bad estiamtion: ', count_wrong_value
 ####################  
 
 # Average delta_x on each candidate of each keypoint
+# Result:
+# nb_candidate * nb_keypoints
 delta_x_lst = []
 #delta_x_lst.append(new_field[:nb_keypoints])
 for idx_can in range(nb_candidate):
@@ -523,6 +527,8 @@ with open(save_path+'{}_aggregated.pickle'.format(debate), 'wb') as handle:
     	pickle.dump(res, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 # Average delta_x of each candidate of each keypoint w.r.t. each emotion
+# Result:
+# nb_candidate * nb_emotion * nb_keypoints
 nb_emotion = 7
 emo_lst = []
 for i in range(8, 15):
@@ -562,6 +568,8 @@ with open(save_path+'{}_per_emotion.pickle'.format(debate), 'wb') as handle:
 ####################
 ## Average emo and delta_X for corelation
 ####################
+# Result:
+# nb_candidate * (nb_keypoints + nb_emotion)
 corr_info_lst = []
 for idx_can in range(nb_candidate):
     value = [ 0 for i in range(nb_keypoints+nb_emotion)] 
@@ -593,6 +601,58 @@ for idx_can in range(nb_candidate):
 
 with open(save_path+'{}_corr_info.pickle'.format(debate), 'wb') as handle:
     	pickle.dump(corr_info_lst, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+####################
+##Correlation for one candidate
+####################
+# Result:
+# nb_valid_Frame* (nb_keypoints + nb_emotion)       
+idx_can = 7
+idx_select = np.array([False for i in range(nb_total_field)])
+idx_select[6:13] = True
+idx_select[15:15+nb_keypoints] = True
+idx_select[16] = False
+valid_corr_info_lst = []
+for idx_frame in range(nb_frame):
+    frame = final_table[idx_frame]
+    on_screen = frame[nb_col_head+idx_can*nb_total_field] != '-1'
+    if on_screen:
+        info = frame[nb_col_head+idx_can*nb_total_field:nb_col_head+(1+idx_can)*nb_total_field] 
+        info = np.array(info)
+        temp = info[idx_select]
+        val = np.zeros_like(temp)
+        val[-nb_emotion:] = temp[:nb_emotion]
+        val[:-nb_emotion] = temp[nb_emotion:]
+        valid_corr_info_lst.append(val)
+        
+valid_corr_info_lst = np.array(valid_corr_info_lst).astype(float)   
+
+# Interpolation for missing value
+mean_val = np.zeros(nb_keypoints-1)
+for i in range(nb_keypoints-1):
+    col = valid_corr_info_lst[:, i]
+    mean_val[i] = col[col != -1].mean()
+# replace -1 by mean value
+for i in range(nb_keypoints-1):
+    col = valid_corr_info_lst[:, i]
+    col[col == -1] = mean_val[i]
+
+
+corr = np.corrcoef(valid_corr_info_lst, rowvar=False)
+CorrMtx(corr, dropDuplicates = True)
+        
+    
+# Mean delta(x) of the candidate on each emotion
+# Verification of correlation
+valid_emotion = [[0 for i in range(nb_keypoints-1)] for j in range(nb_emotion)]
+count = [[0 for i in range(nb_keypoints-1)] for j in range(nb_emotion)]
+
+for i in range(len(valid_corr_info_lst)):
+    emo_lst = valid_corr_info_lst[i][11:]
+    idx_max = np.argmax(emo_lst)
+    valid_emotion[idx_max] += valid_corr_info_lst[i][:11]
+    count[idx_max] += [1 for k in range(nb_keypoints)]
+
 
 ###### Verification of ref distance
 ## Need the table Combined

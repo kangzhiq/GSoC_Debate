@@ -7,7 +7,7 @@ Created on Thu Jul  2 17:31:39 2020
 """
 import pickle
 from tqdm import tqdm
-
+import numpy as np
 
 pickle_dir = 'Combined/'
 nb_candidate = 23
@@ -102,7 +102,7 @@ for k in range(nb_candidate):
 
 
 ############################
-## Plot
+## Plot delta(x) w.r.t emotion
 ############################        
 import matplotlib.pyplot as plt
 import numpy as np
@@ -117,7 +117,7 @@ data_std = std_can[:,(0, 2, 3, 4)]/3
     
     
 length = len(data)
-x_labels = emo_lst
+x_labels = emotion_lst
 
 # Set plot parameters
 fig, ax = plt.subplots()
@@ -153,7 +153,7 @@ data_std = std_can[:,(0, 2, 3, 4, 5, 6, 7)]/3
 
     
 length = len(data)
-x_labels = emo_lst
+x_labels = emotion_lst
 
 # Set plot parameters
 fig, ax = plt.subplots()
@@ -183,8 +183,10 @@ fig.tight_layout()
 plt.show()
         
 
+############################
+## Avearage emotion
+############################ 
 
-####### Avearage emotion
 pose_avg_aggre_emo = []
 for i in range(nb_candidate):
     aggre_emo = []
@@ -219,10 +221,49 @@ money = emo_avg
 
 fig, ax = plt.subplots()
 plt.bar(x, money)
-plt.xticks(x, emo_lst)
+plt.xticks(x, emotion_lst)
+plt.show()
+############################
+## Variation over debates
+############################ 
+
+idx_can = 7
+idx_emo = 4
+delta_x_over_debate_lst = []
+for idx_video in range(len(pose_lst)):
+    info = pose_lst[idx_video]
+    delta_x_over_debate_lst.append(info[idx_can][idx_emo])
+    
+
+length = len(pose_lst)
+x_labels = debate_lst
+
+# Set plot parameters
+fig, ax = plt.subplots()
+width = 0.2 # width of bar
+x = np.arange(length)
+
+ax.bar(x, data[:,0], width, color='#000080', label='nose', yerr=data_std[:,0])
+ax.bar(x + width, data[:,2], width, color='#0F52BA', label='rshoulder', yerr=data_std[:,1])
+ax.bar(x + (2 * width), data[:,3], width, color='#6593F5', label='relbow', yerr=data_std[:,2])
+ax.bar(x + (3 * width), data[:,4], width, color='#73C2FB', label='rwrist', yerr=data_std[:,3])
+      
+       
+ax.set_ylabel('Delta_x')
+ax.set_ylim(0, 0.3)
+ax.set_xticks(x + width + width/2)
+ax.set_xticklabels(x_labels)
+ax.set_xlabel('Emotion')
+ax.set_title(can_lst[idx_can])
+ax.legend()
+plt.grid(True, 'major', 'y', ls='--', lw=1, c='k', alpha=.3)
+
+fig.tight_layout()
 plt.show()
 
-####### Avearage candidate
+############################
+## Avearage candidate
+############################ 
 
 can_avg = [0 for i in range(nb_candidate)]
 for i in range(nb_candidate):
@@ -294,7 +335,7 @@ def CorrMtx(df, dropDuplicates = True):
                     linewidth=.5, cbar_kws={"shrink": .5}, ax=ax)
 
 
-CorrMtx(corr, dropDuplicates = True)
+
 
 corre_info_lst = []
 for debate in debate_lst:
@@ -311,14 +352,13 @@ for idx_debate in range(len(corre_info_lst)):
     for idx_can in range(nb_candidate):
         if corre_info_lst[idx_debate][idx_can][0] != -1:
             info = np.array(corre_info_lst[idx_debate][idx_can])
-            val = info[info != 0]
-            corre_lst.append(val)
+            if not np.any(info == -1):
+                val = info[info != 0]
+                corre_lst.append(val)
 
 corre_lst = np.array(corre_lst)
 corr = np.corrcoef(corre_lst, rowvar=False)
-sns.heatmap(corr, 
-        xticklabels=valid_keypoints + emotion_lst,
-        yticklabels=valid_keypoints + emotion_lst)
+CorrMtx(corr, dropDuplicates = True)
 
 
 
