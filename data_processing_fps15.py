@@ -132,10 +132,11 @@ def get_normalization_ref(keypoints, idx_can, ref_kp_dist_lst):
 ## Loading data
 ####################
 
-debate = 'Debate3'
+debate = 'Debate11'
 json_pickle_path = 'json_fps15/{}.pickle'.format(debate)
 ref_dist_path = 'candidate/can_ref_dist.pickle'
-csv_path = 'tables_new/{}.csv'.format(debate)
+csv_path = 'tables_speaking/{}.csv'.format(debate)
+is_speaking_path = 'tables_speaking/{}.csv'.format(debate)
 save_path = 'Combined/' 
 fps=15
 nb_half = fps/2
@@ -216,7 +217,7 @@ print 'Interpolation: ', count_interpolation
 nb_candidate = 23
 # number of feld for each candidate in csv
 nb_field = 15
-nb_col_head = 4
+nb_col_head = 5
 
 can_lst = []
 for i in range(nb_candidate):
@@ -238,10 +239,10 @@ for idx_frame in range(0, nb_frame):
     for idx_frame_t in range(range_left, range_right):
         combined[idx_frame_t][:nb_col_head] = info[idx_frame][:nb_col_head]
         # no candidate is on screen
-        if info[idx_frame][2] != '1':
+        if info[idx_frame][3] == '0':
             continue
         keypoints_frame = keypoints_lst[idx_frame_t]
-        nb_on_screen = int(info[idx_frame][2])
+        nb_on_screen = int(info[idx_frame][3])
         if len(keypoints_frame) != nb_on_screen:
             continue
         for idx_can in range(nb_candidate):
@@ -302,18 +303,18 @@ print 'number of opse info assigned: ', count_combined
 #while info[idx_frame][2] == '0':
 #    idx_frame += 1  
 #       
-#x = int(info[idx_frame][6]) 
-#y = int(info[idx_frame][7])
-#h = int(info[idx_frame][8])
-#w = int(info[idx_frame][9])
+#x = int(info[idx_frame][2+nb_col_head]) 
+#y = int(info[idx_frame][3+nb_col_head])
+#h = int(info[idx_frame][4+nb_col_head])
+#w = int(info[idx_frame][5+nb_col_head])
 #
 #idx_can =0
 #while int(x) == -1:
 #    idx_can += 1
-#    x = int(info[idx_frame][6+idx_can*nb_field])
-#    y = int(info[idx_frame][7+idx_can*nb_field])
-#    h = int(info[idx_frame][8+idx_can*nb_field])
-#    w = int(info[idx_frame][9+idx_can*nb_field])
+#    x = int(info[idx_frame][2+nb_col_head+idx_can*nb_field])
+#    y = int(info[idx_frame][3+nb_col_head+idx_can*nb_field])
+#    h = int(info[idx_frame][4+nb_col_head+idx_can*nb_field])
+#    w = int(info[idx_frame][5+nb_col_head+idx_can*nb_field])
 #    
 #idx_frame += 1
 #import matplotlib.pyplot as plt
@@ -330,7 +331,7 @@ print 'number of opse info assigned: ', count_combined
 #im = cv2.imread("Frames_fps1/{}/frame{:06d}.jpg".format(debate, idx_frame))
 #plot_keypoint_on_image(im, keypoint_set=keypoints_lst[idx_frame], save_path='test/frame{:06d}.jpg'.format(idx_frame))
 #
-#print combined[idx_frame*fps+6][19+idx_can*nb_total_field:4+(idx_can+1)*nb_total_field]
+#print combined[idx_frame*fps+6][nb_col_head+idx_can*nb_total_field:nb_col_head+(idx_can+1)*nb_total_field]
 
 
 ####################
@@ -378,7 +379,7 @@ for idx_frame in range(nb_frame):
     range_right = min(nb_frame_fps15, idx_frame*fps+nb_half)
     for idx_frame_t in range(range_left, range_right):
         # no candidate is on screen
-        if info[idx_frame][2] != '1':
+        if info[idx_frame][3] == '0':
             continue
 
         # Calculate the delta_x based on current frame and the frame after
@@ -425,21 +426,21 @@ for idx_frame in range(nb_frame):
 #idx_frame=824
 #idx_can = 2
 #
-#idx_frame = 8103
-#while final_table[idx_frame][1] == '-1':
+#idx_frame = 81
+#while final_table[idx_frame][3] == '0':
 #    idx_frame += 1  
 #       
-#x = int(final_table[idx_frame][4]) 
+#x = int(final_table[idx_frame][2+nb_col_head]) 
 #idx_can = 0     
 #while int(x) == -1:
 #    idx_can += 1
-#    x = int(final_table[idx_frame][4+idx_can*nb_total_field])
-#    y = int(final_table[idx_frame][5+idx_can*nb_total_field])
-#    h = int(final_table[idx_frame][6+idx_can*nb_total_field])
-#    w = int(final_table[idx_frame][7+idx_can*nb_total_field])
+#    x = int(final_table[idx_frame][2+nb_col_head+idx_can*nb_total_field])
+#    y = int(final_table[idx_frame][3+nb_col_head+idx_can*nb_total_field])
+#    h = int(final_table[idx_frame][4+nb_col_head+idx_can*nb_total_field])
+#    w = int(final_table[idx_frame][5+nb_col_head+idx_can*nb_total_field])
 #
 #print final_table[idx_frame][17+idx_can*nb_total_field:2+(idx_can+1)*nb_total_field]
-#
+
 #for i in range(nb_frame):
 #    if combined[i][17] != '-1':
 #        print(combined[i][17])
@@ -488,7 +489,22 @@ print 'Bad estiamtion: ', count_wrong_value
 # in total 5904 frames
 # 774 no ref dist
                 
-#print final_table[idx_frame+1][2+idx_can*nb_total_field:2+(idx_can+1)*nb_total_field]
+####################
+## TODO: Further interpolation
+####################  
+# Interpolation based on the same shot
+
+#idx_start = 0
+#idx_end = 1
+#frame = final_table[0]
+#
+#while idx_end < nb_frame:
+#    can_start = final_table[idx_start][4]
+#    can_end = final_table[idx_end][4]
+#    while can_start == can_end:
+#        idx_end +=1
+             
+
 
 ####################
 ## Analysis
@@ -603,55 +619,158 @@ with open(save_path+'{}_corr_info.pickle'.format(debate), 'wb') as handle:
     	pickle.dump(corr_info_lst, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 ####################
-##Correlation for one candidate
+##Correlation for all candidates
 ####################
 # Result:
 # nb_valid_Frame* (nb_keypoints + nb_emotion)       
-idx_can = 7
-idx_select = np.array([False for i in range(nb_total_field)])
-idx_select[6:13] = True
-idx_select[15:15+nb_keypoints] = True
-idx_select[16] = False
-valid_corr_info_lst = []
-for idx_frame in range(nb_frame):
-    frame = final_table[idx_frame]
-    on_screen = frame[nb_col_head+idx_can*nb_total_field] != '-1'
-    if on_screen:
-        info = frame[nb_col_head+idx_can*nb_total_field:nb_col_head+(1+idx_can)*nb_total_field] 
-        info = np.array(info)
-        temp = info[idx_select]
-        val = np.zeros_like(temp)
-        val[-nb_emotion:] = temp[:nb_emotion]
-        val[:-nb_emotion] = temp[nb_emotion:]
-        valid_corr_info_lst.append(val)
+def average_keypoints(keypoints):
+    # neck already removed
+    val = np.zeros(15)
+    val[0] = keypoints[0]
+    val[-11:] = keypoints[-11:]
+    mask = np.array(keypoints[1:7]) != '-1'
+    if (mask[0]+mask[3]) != 0:
+        val[1] = str((mask[0]*float(keypoints[1]) + mask[3]*float(keypoints[4])) / (mask[0]+mask[3]))
+    else:
+        val[1] = '-1'
         
-valid_corr_info_lst = np.array(valid_corr_info_lst).astype(float)   
-
-# Interpolation for missing value
-mean_val = np.zeros(nb_keypoints-1)
-for i in range(nb_keypoints-1):
-    col = valid_corr_info_lst[:, i]
-    mean_val[i] = col[col != -1].mean()
-# replace -1 by mean value
-for i in range(nb_keypoints-1):
-    col = valid_corr_info_lst[:, i]
-    col[col == -1] = mean_val[i]
-
-
-corr = np.corrcoef(valid_corr_info_lst, rowvar=False)
-CorrMtx(corr, dropDuplicates = True)
+    if (mask[1]+mask[4]) != 0:
+        val[2] = str((mask[1]*float(keypoints[2]) + mask[4]*float(keypoints[5])) / (mask[1]+mask[4]))
+    else:
+        val[2] = '-1'    
         
+    if (mask[2]+mask[5]) != 0:
+        val[3] = str((mask[2]*float(keypoints[3]) + mask[5]*float(keypoints[6])) / (mask[2]+mask[5]))
+    else:
+        val[3] = '-1' 
+        
+    return val
+
+#idx_can = 7
+#idx_select = np.array([False for i in range(nb_total_field)])
+#idx_select[6:13] = True
+#idx_select[15:15+nb_keypoints] = True
+## Exclude neck
+#idx_select[16] = False
+#
+#valid_corr_info_lst = []
+#for idx_frame in range(nb_frame):
+#    for idx_can in range(nb_emotion):
+#        frame = final_table[idx_frame]
+#        on_screen = frame[nb_col_head+idx_can*nb_total_field] != '-1'
+#        if on_screen:
+#            info = frame[nb_col_head+idx_can*nb_total_field:nb_col_head+(1+idx_can)*nb_total_field] 
+#            info = np.array(info)
+#            temp = info[idx_select]
+#            val = np.zeros_like(temp)
+#            val[-nb_emotion:] = temp[:nb_emotion]
+#            val[:-nb_emotion] = temp[nb_emotion:]
+#            val = average_keypoints(val)
+#            if not np.any(val == -1):
+#                valid_corr_info_lst.append(val)
+#        
+#valid_corr_info_lst = np.array(valid_corr_info_lst).astype(float)   
+#
+#with open(save_path+'{}_valid_corr_info.pickle'.format(debate), 'wb') as handle:
+#    	pickle.dump(valid_corr_info_lst, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+
+###############
+## TODO: Clustering data
+##############
+#idx_select = np.array([False for i in range(nb_total_field)])
+#idx_select[nb_field:nb_field+nb_keypoints] = True
+#idx_select[nb_keypoints+1] = False
+#idx_select[16] = False
+#
+#cluster_info_lst = []
+#for idx_frame in range(nb_frame):
+#    for idx_can in range(nb_emotion):
+#        frame = final_table[idx_frame]
+#        on_screen = frame[nb_col_head+idx_can*nb_total_field] != '-1'
+#        if on_screen:
+#            info = frame[nb_col_head+idx_can*nb_total_field:nb_col_head+(1+idx_can)*nb_total_field] 
+#            info = np.array(info)
+#            temp = info[idx_select]
+#            val = np.zeros_like(temp)
+#            val[-nb_emotion:] = temp[:nb_emotion]
+#            val[:-nb_emotion] = temp[nb_emotion:]
+#            val = average_keypoints(val)
+#            if not np.any(val == -1):
+#                cluster_info_lst.append(val)
+
+################
+## is speaking or not
+################     
+speaking_info_lst = []
+count_is_speaking = 0
+count_not_speaking = 0
+for idx_can in range(nb_candidate):
+    value_sp = [[0 for i in range(nb_keypoints)] for j in range(nb_emotion)]
+    count_sp = [[0 for i in range(nb_keypoints)] for j in range(nb_emotion)]
+    value_not_sp = [[0 for i in range(nb_keypoints)] for j in range(nb_emotion)]
+    count_not_sp = [[0 for i in range(nb_keypoints)] for j in range(nb_emotion)]
+
+    for idx_frame in range(nb_frame-1):
+        frame = final_table[idx_frame]
+        on_screen = frame[nb_col_head+idx_can*nb_total_field] != '-1'
+        if on_screen:
+            emo_lst = frame[nb_col_head+6+idx_can*nb_total_field:nb_col_head+13+idx_can*nb_total_field] 
+            idx_emo = np.argmax(emo_lst)
+            keypoints = frame[nb_col_head+nb_field+idx_can*nb_total_field:nb_col_head+nb_field+idx_can*nb_total_field+nb_keypoints]  
+
+            is_speaking = frame[nb_col_head+idx_can*nb_total_field+1] != '-1'
+            if is_speaking:
+                count_is_speaking += 1
+                for idx_kp in range(nb_keypoints):
+                    if keypoints[idx_kp] != '-1':
+                        value_sp[idx_emo][idx_kp] += float(keypoints[idx_kp])
+                        count_sp[idx_emo][idx_kp] += 1
+            else:
+                count_not_speaking += 1
+                for idx_kp in range(nb_keypoints):
+                    if keypoints[idx_kp] != '-1':
+                        value_not_sp[idx_emo][idx_kp] += float(keypoints[idx_kp])
+                        count_not_sp[idx_emo][idx_kp] += 1
+#    print 'Is speaking: ', count_is_speaking
+#    print 'Not speaking: ', 
+#    print value_sp
     
-# Mean delta(x) of the candidate on each emotion
-# Verification of correlation
-valid_emotion = [[0 for i in range(nb_keypoints-1)] for j in range(nb_emotion)]
-count = [[0 for i in range(nb_keypoints-1)] for j in range(nb_emotion)]
+    speaking_info_lst.append(((value_sp, count_sp), (value_not_sp, count_not_sp)))
 
-for i in range(len(valid_corr_info_lst)):
-    emo_lst = valid_corr_info_lst[i][11:]
-    idx_max = np.argmax(emo_lst)
-    valid_emotion[idx_max] += valid_corr_info_lst[i][:11]
-    count[idx_max] += [1 for k in range(nb_keypoints)]
+with open(save_path+'{}_speaking_emotion.pickle'.format(debate), 'wb') as handle:
+    	pickle.dump(speaking_info_lst, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+
+
+
+## Interpolation for missing value
+#mean_val = np.zeros(nb_keypoints-1)
+#for i in range(nb_keypoints-1):
+#    col = valid_corr_info_lst[:, i]
+#    mean_val[i] = col[col != -1].mean()
+## replace -1 by mean value
+#for i in range(nb_keypoints-1):
+#    col = valid_corr_info_lst[:, i]
+#    col[col == -1] = mean_val[i]
+
+
+#
+#corr = np.corrcoef(valid_corr_info_lst, rowvar=False)
+#CorrMtx(corr, dropDuplicates = True)
+#        
+    
+#TODO: Mean delta(x) of the candidate on each emotion
+# Verification of correlation
+#valid_emotion = [[0 for i in range(nb_keypoints-1)] for j in range(nb_emotion)]
+#count = [[0 for i in range(nb_keypoints-1)] for j in range(nb_emotion)]
+#
+#for i in range(len(valid_corr_info_lst)):
+#    emo_lst = valid_corr_info_lst[i][11:]
+#    idx_max = np.argmax(emo_lst)
+#    valid_emotion[idx_max] += valid_corr_info_lst[i][:11]
+#    count[idx_max] += [1 for k in range(nb_keypoints)]
+
 
 
 ###### Verification of ref distance
@@ -769,16 +888,16 @@ for i in range(len(valid_corr_info_lst)):
 ##############
 ## Save csv files
 #############
-#final_header = [0 for i in range(nb_col_head+nb_candidate*nb_total_field)]
-#final_header[:nb_col_head] = header[:nb_col_head]
-#for i in range(nb_candidate):
-#    final_header[nb_col_head+i*nb_total_field: nb_col_head+i*nb_total_field+nb_field] = header[nb_col_head+i*nb_field: nb_col_head+i*nb_field+nb_field]
-#    for j in range(nb_new_field):
-#        final_header[nb_col_head+i*nb_total_field+nb_field+j] = new_field[j] + '_' + can_lst[i]
-#
-#res = []
-#res.append(final_header)
-#for i in range(nb_frame-1):
-#    res.append(final_table[i])
-#
-#np.savetxt(save_path+'{}_pose.csv'.format(debate), res, delimiter=';', fmt='%s')
+final_header = [0 for i in range(nb_col_head+nb_candidate*nb_total_field)]
+final_header[:nb_col_head] = header[:nb_col_head]
+for i in range(nb_candidate):
+    final_header[nb_col_head+i*nb_total_field: nb_col_head+i*nb_total_field+nb_field] = header[nb_col_head+i*nb_field: nb_col_head+i*nb_field+nb_field]
+    for j in range(nb_new_field):
+        final_header[nb_col_head+i*nb_total_field+nb_field+j] = new_field[j] + '_' + can_lst[i]
+
+res = []
+res.append(final_header)
+for i in range(nb_frame-1):
+    res.append(final_table[i])
+
+np.savetxt(save_path+'{}_pose.csv'.format(debate), res, delimiter=';', fmt='%s')

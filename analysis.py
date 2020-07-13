@@ -217,10 +217,9 @@ for i in range(nb_emotion):
 
 ## Plot
 x = np.arange(nb_emotion)
-money = emo_avg
 
 fig, ax = plt.subplots()
-plt.bar(x, money)
+plt.bar(x, emo_avg)
 plt.xticks(x, emotion_lst)
 plt.show()
 ############################
@@ -228,14 +227,14 @@ plt.show()
 ############################ 
 
 idx_can = 7
-idx_emo = 4
+idx_emo = 1
 delta_x_over_debate_lst = []
 for idx_video in range(len(pose_lst)):
     info = pose_lst[idx_video]
     delta_x_over_debate_lst.append(info[idx_can][idx_emo])
     
-
-length = len(pose_lst)
+delta_x_over_debate_lst = np.array(delta_x_over_debate_lst)
+length = 5
 x_labels = debate_lst
 
 # Set plot parameters
@@ -243,17 +242,17 @@ fig, ax = plt.subplots()
 width = 0.2 # width of bar
 x = np.arange(length)
 
-ax.bar(x, data[:,0], width, color='#000080', label='nose', yerr=data_std[:,0])
-ax.bar(x + width, data[:,2], width, color='#0F52BA', label='rshoulder', yerr=data_std[:,1])
-ax.bar(x + (2 * width), data[:,3], width, color='#6593F5', label='relbow', yerr=data_std[:,2])
-ax.bar(x + (3 * width), data[:,4], width, color='#73C2FB', label='rwrist', yerr=data_std[:,3])
+ax.bar(x, delta_x_over_debate_lst[5:10,0], width, color='#000080', label='nose')
+ax.bar(x + width, delta_x_over_debate_lst[5:10,2], width, color='#0F52BA', label='rshoulder')
+ax.bar(x + (2 * width), delta_x_over_debate_lst[5:10,3], width, color='#6593F5', label='relbow')
+ax.bar(x + (3 * width), delta_x_over_debate_lst[5:10,4], width, color='#73C2FB', label='rwrist')
       
        
 ax.set_ylabel('Delta_x')
-ax.set_ylim(0, 0.3)
+ax.set_ylim(0, 0.5)
 ax.set_xticks(x + width + width/2)
-ax.set_xticklabels(x_labels)
-ax.set_xlabel('Emotion')
+ax.set_xticklabels(debate_lst[5:10])
+ax.set_xlabel('Debate')
 ax.set_title(can_lst[idx_can])
 ax.legend()
 plt.grid(True, 'major', 'y', ls='--', lw=1, c='k', alpha=.3)
@@ -335,7 +334,8 @@ def CorrMtx(df, dropDuplicates = True):
                     linewidth=.5, cbar_kws={"shrink": .5}, ax=ax)
 
 
-
+## Seelcting average is wrong
+## We should concatenate row by row of each frame
 
 corre_info_lst = []
 for debate in debate_lst:
@@ -361,5 +361,106 @@ corr = np.corrcoef(corre_lst, rowvar=False)
 CorrMtx(corr, dropDuplicates = True)
 
 
+#correlation on each complete samples, not on average
+valid_corre_info_lst = []
+for debate in debate_lst:
+    debate_pickle_path = pickle_dir +  debate + '_valid_corr_info.pickle'
+    with open(debate_pickle_path, 'rb') as handle:
+        corre = pickle.load(handle)
+    if len(corre) != 0:
+        for i in range(len(corre)):
+            valid_corre_info_lst.append(corre[i])
 
+valid_corre_info_lst = np.array(valid_corre_info_lst)
+corr = np.corrcoef(valid_corre_info_lst, rowvar=False)
+CorrMtx(corr, dropDuplicates = True)
+
+
+################################
+## Speaking or not + emotion
+################################
+speaking_info_lst = []
+for debate in debate_lst:
+    debate_pickle_path = pickle_dir +  debate + '_speaking_emotion.pickle'
+    with open(debate_pickle_path, 'rb') as handle:
+        data = pickle.load(handle)
+    speaking_info_lst.append(data)
+
+idx_can = 7
+
+speaking_lst = np.array([[0 for i in range(nb_keypoints)] for j in range(nb_emotion)]).astype(float)
+count_speaking_lst = np.array([[0 for i in range(nb_keypoints)] for j in range(nb_emotion)]).astype(float)
+no_speaking_lst = np.array([[0 for i in range(nb_keypoints)] for j in range(nb_emotion)]).astype(float)
+count_no_speaking_lst = np.array([[0 for i in range(nb_keypoints)] for j in range(nb_emotion)]).astype(float)
+
+for i in range(len(speaking_info_lst)):
+    speaking_lst += np.array(speaking_info_lst[i][idx_can][0][0])
+    count_speaking_lst += np.array(speaking_info_lst[i][idx_can][0][1])
+    no_speaking_lst += np.array(speaking_info_lst[i][idx_can][1][0])
+    count_no_speaking_lst += np.array(speaking_info_lst[i][idx_can][1][1])
+    
+
+for j in range(nb_emotion):
+    for i in range(nb_keypoints):
+        if speaking_lst[j][i] != 0:
+            speaking_lst[j][i] /= count_speaking_lst[j][i]
+        else:
+            speaking_lst[j][i] = 0
+        if no_speaking_lst[j][i] != 0:
+            no_speaking_lst[j][i] /= count_no_speaking_lst[j][i]
+        else:
+            no_speaking_lst[j][i] = 0      
+
+## Plot            
+######### 4 keypoints
+
+data = np.array(no_speaking_lst) 
+    
+length = len(data)
+x_labels = emotion_lst
+
+# Set plot parameters
+fig, ax = plt.subplots()
+width = 0.2 # width of bar
+x = np.arange(length)
+
+ax.bar(x, data[:,0], width, color='#000080', label='nose')
+ax.bar(x + width, data[:,2], width, color='#0F52BA', label='rshoulder')
+ax.bar(x + (2 * width), data[:,3], width, color='#6593F5', label='relbow')
+ax.bar(x + (3 * width), data[:,4], width, color='#73C2FB', label='rwrist')
+      
        
+ax.set_ylabel('Delta_x')
+ax.set_ylim(0, 0.3)
+ax.set_xticks(x + width + width/2)
+ax.set_xticklabels(x_labels)
+ax.set_xlabel('Emotion')
+ax.set_title(can_lst[idx_can]+': Not speaking')
+ax.legend()
+plt.grid(True, 'major', 'y', ls='--', lw=1, c='k', alpha=.3)
+
+fig.tight_layout()
+plt.show()           
+
+
+## Use this data to calculate the overall average
+emo_avg = [0 for i in range(nb_emotion)]
+count = [0 for i in range(nb_emotion)]
+
+for k in range(len(speaking_info_lst)):
+    for j in range(nb_candidate):
+        for i in range(nb_emotion):
+            emo_avg[i] += np.sum(speaking_info_lst[k][j][0][0][i])
+            count += np.sum(speaking_info_lst[k][j][0][1][i])
+            emo_avg[i] += np.sum(speaking_info_lst[k][j][1][0][i])
+            count += np.sum(speaking_info_lst[k][j][1][1][i])
+
+for i in range(nb_emotion):
+    emo_avg[i] /= count[i]
+    
+x = np.arange(nb_emotion)
+
+fig, ax = plt.subplots()
+plt.bar(x, emo_avg)
+plt.xticks(x, emotion_lst)
+plt.show()
