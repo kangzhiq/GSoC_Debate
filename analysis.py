@@ -315,9 +315,10 @@ def CorrMtx(df, dropDuplicates = True):
 
     # Set up  matplotlib figure
     f, ax = plt.subplots(figsize=(11, 9))
+    
 
     # Add diverging colormap from red to blue
-    cmap = sns.diverging_palette(250, 10, as_cmap=True)
+    cmap = sns.diverging_palette(250, 10, as_cmap=True, n = 10)
 
     # Draw correlation plot with or without duplicates
     if dropDuplicates:
@@ -332,6 +333,7 @@ def CorrMtx(df, dropDuplicates = True):
                     yticklabels=valid_keypoints + emotion_lst,
                     square=True,
                     linewidth=.5, cbar_kws={"shrink": .5}, ax=ax)
+#    f.autofmt_xdate()
 
 
 ## Seelcting average is wrong
@@ -447,13 +449,15 @@ plt.show()
 emo_avg = [0 for i in range(nb_emotion)]
 count = [0 for i in range(nb_emotion)]
 
+speaking_info_lst = np.array(speaking_info_lst)
 for k in range(len(speaking_info_lst)):
     for j in range(nb_candidate):
         for i in range(nb_emotion):
             emo_avg[i] += np.sum(speaking_info_lst[k][j][0][0][i])
-            count += np.sum(speaking_info_lst[k][j][0][1][i])
+            # Remove neck count
+            count[i] += (np.sum(speaking_info_lst[k][j][0][1][i]) - speaking_info_lst[k][j][0][1][i][1])
             emo_avg[i] += np.sum(speaking_info_lst[k][j][1][0][i])
-            count += np.sum(speaking_info_lst[k][j][1][1][i])
+            count[i] += (np.sum(speaking_info_lst[k][j][1][1][i]) - speaking_info_lst[k][j][1][1][i][1])
 
 for i in range(nb_emotion):
     emo_avg[i] /= count[i]
@@ -463,4 +467,7 @@ x = np.arange(nb_emotion)
 fig, ax = plt.subplots()
 plt.bar(x, emo_avg)
 plt.xticks(x, emotion_lst)
+ax.set_ylim(0.02, 0.05)
 plt.show()
+
+## TODO:Verify fear

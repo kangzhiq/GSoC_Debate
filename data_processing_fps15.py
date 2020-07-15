@@ -132,7 +132,7 @@ def get_normalization_ref(keypoints, idx_can, ref_kp_dist_lst):
 ## Loading data
 ####################
 
-debate = 'Debate11'
+debate = 'Debate6'
 json_pickle_path = 'json_fps15/{}.pickle'.format(debate)
 ref_dist_path = 'candidate/can_ref_dist.pickle'
 csv_path = 'tables_speaking/{}.csv'.format(debate)
@@ -300,7 +300,7 @@ print 'number of opse info assigned: ', count_combined
 #idx_can = 2
 #
 #idx_frame = 1588
-#while info[idx_frame][2] == '0':
+#while combined[idx_frame][2] == '0':
 #    idx_frame += 1  
 #       
 #x = int(info[idx_frame][2+nb_col_head]) 
@@ -488,22 +488,7 @@ print 'Bad estiamtion: ', count_wrong_value
 # Fianl result
 # in total 5904 frames
 # 774 no ref dist
-                
-####################
-## TODO: Further interpolation
-####################  
-# Interpolation based on the same shot
 
-#idx_start = 0
-#idx_end = 1
-#frame = final_table[0]
-#
-#while idx_end < nb_frame:
-#    can_start = final_table[idx_start][4]
-#    can_end = final_table[idx_end][4]
-#    while can_start == can_end:
-#        idx_end +=1
-             
 
 
 ####################
@@ -646,34 +631,135 @@ def average_keypoints(keypoints):
         
     return val
 
-#idx_can = 7
-#idx_select = np.array([False for i in range(nb_total_field)])
-#idx_select[6:13] = True
-#idx_select[15:15+nb_keypoints] = True
-## Exclude neck
-#idx_select[16] = False
-#
-#valid_corr_info_lst = []
-#for idx_frame in range(nb_frame):
-#    for idx_can in range(nb_emotion):
-#        frame = final_table[idx_frame]
-#        on_screen = frame[nb_col_head+idx_can*nb_total_field] != '-1'
-#        if on_screen:
-#            info = frame[nb_col_head+idx_can*nb_total_field:nb_col_head+(1+idx_can)*nb_total_field] 
-#            info = np.array(info)
-#            temp = info[idx_select]
-#            val = np.zeros_like(temp)
-#            val[-nb_emotion:] = temp[:nb_emotion]
-#            val[:-nb_emotion] = temp[nb_emotion:]
-#            val = average_keypoints(val)
-#            if not np.any(val == -1):
-#                valid_corr_info_lst.append(val)
-#        
-#valid_corr_info_lst = np.array(valid_corr_info_lst).astype(float)   
-#
-#with open(save_path+'{}_valid_corr_info.pickle'.format(debate), 'wb') as handle:
-#    	pickle.dump(valid_corr_info_lst, handle, protocol=pickle.HIGHEST_PROTOCOL)
+idx_can = 7
+idx_select = np.array([False for i in range(nb_total_field)])
+idx_select[6:13] = True
+idx_select[15:15+nb_keypoints] = True
+# Exclude neck
+idx_select[16] = False
 
+valid_corr_info_lst = []
+for idx_frame in range(nb_frame):
+    for idx_can in range(nb_emotion):
+        frame = final_table[idx_frame]
+        on_screen = frame[nb_col_head+idx_can*nb_total_field] != '-1'
+        if on_screen:
+            info = frame[nb_col_head+idx_can*nb_total_field:nb_col_head+(1+idx_can)*nb_total_field] 
+            info = np.array(info)
+            temp = info[idx_select]
+            val = np.zeros_like(temp)
+            val[-nb_emotion:] = temp[:nb_emotion]
+            val[:-nb_emotion] = temp[nb_emotion:]
+            val = average_keypoints(val)
+            if not np.any(val == -1):
+                valid_corr_info_lst.append(val)
+        
+valid_corr_info_lst = np.array(valid_corr_info_lst).astype(float)   
+
+with open(save_path+'{}_valid_corr_info.pickle'.format(debate), 'wb') as handle:
+    	pickle.dump(valid_corr_info_lst, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+
+###############
+## Correlation on each shot
+##############
+# Here we use combined table, after replacing coordinate by delta_x
+corr_lst = []
+nb_emotion = 7
+idx_start = 0
+idx_end = 1
+
+while idx_end < nb_frame_fps15:
+    while combined[idx_start][3] != '1' and idx_start < nb_frame_fps15-2:
+        idx_start += 1
+    if idx_start >= nb_frame_fps15-2:
+        break
+    
+    idx_end = idx_start + 1
+    candidates = combined[idx_start][4]
+    while combined[idx_end][4] == candidates and idx_end < nb_frame_fps15-1:
+        idx_end += 1
+    
+    if idx_end - idx_start < 30:
+        idx_start = idx_end
+        continue
+    print '['+str(idx_start)+', '+str(idx_end)+']'
+    for idx_can in range(nb_candidate):
+        on_screen = combined[idx_start][nb_col_head+idx_can*nb_total_field] != '-1'
+        if on_screen:
+            break
+    val_all = np.zeros(18)
+    count_all = np.zeros(18)
+    count_all[-7:] = idx_end - idx_start
+    for idx_frame_t in range(idx_start, idx_end):
+        ref_dist = float(combined[idx_frame_t][nb_col_head+(idx_can+1)*nb_total_field-1])
+        if ref_dist == -1:
+            continue
+        info = combined[idx_frame_t][nb_col_head+idx_can*nb_total_field:nb_col_head+(1+idx_can)*nb_total_field] 
+        if info[nb_field].startswith('('):
+            continue
+        info = np.array(info)
+        temp = info[idx_select].astype(float)
+        val = np.zeros_like(temp)
+        count = np.zeros_like(temp)
+        val[-nb_emotion:] = temp[:nb_emotion]
+        val[:-nb_emotion] = temp[nb_emotion:]
+        for i in range(11):
+            if val[i] == -1:
+                val[i] = 0
+            else:
+                val[i] = val[i]/ref_dist
+                count[i] = 1
+        val_all += val
+        count_all += count
+            
+    for i in range(18):
+        if count_all[i] != 0:
+            val_all[i] = val_all[i] / count_all[i]
+        else:
+            val_all[i] = 0
+    
+    if not np.any(val_all == 0):
+        corr_lst.append(val_all)
+    idx_start = idx_end+1
+
+corr_lst = np.array(corr_lst)
+
+with open(save_path+'{}_shot_corr_info.pickle'.format(debate), 'wb') as handle:
+    	pickle.dump(valid_corr_info_lst, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+
+#corr_lst = np.array(corr_lst)
+#corr = np.corrcoef(corr_lst, rowvar=False)
+#corr[0, 0] = -1
+#CorrMtx(corr, dropDuplicates = True)        
+
+
+##############
+## Clustering
+##############
+clustering_lst = []
+nb_frame_window = 30
+
+for idx_frame_t in range(0, nb_frame_fps15, 5):
+    candidates = combined[idx_frame_t][4]
+    if candidates == '':
+        continue
+    same_shot = True
+    for i in range(idx_frame_t, idx_frame_t+nb_frame_window):
+        if combined[i][4] != candidates:         
+            same_shot = False
+            break
+    if not same_shot:
+        continue
+#    idx_frame = (idx_frame_t + 7) / 15
+    frame = combined[idx_frame_t]
+
+    for idx_can in range(nb_candidate):
+        on_screen = frame[nb_col_head+idx_can*nb_total_field] != '-1'
+        if on_screen:
+
+        #TODO: append the delta_x to form a sample            
 
 ###############
 ## TODO: Clustering data
@@ -683,21 +769,9 @@ def average_keypoints(keypoints):
 #idx_select[nb_keypoints+1] = False
 #idx_select[16] = False
 #
-#cluster_info_lst = []
-#for idx_frame in range(nb_frame):
-#    for idx_can in range(nb_emotion):
-#        frame = final_table[idx_frame]
-#        on_screen = frame[nb_col_head+idx_can*nb_total_field] != '-1'
-#        if on_screen:
-#            info = frame[nb_col_head+idx_can*nb_total_field:nb_col_head+(1+idx_can)*nb_total_field] 
-#            info = np.array(info)
-#            temp = info[idx_select]
-#            val = np.zeros_like(temp)
-#            val[-nb_emotion:] = temp[:nb_emotion]
-#            val[:-nb_emotion] = temp[nb_emotion:]
-#            val = average_keypoints(val)
-#            if not np.any(val == -1):
-#                cluster_info_lst.append(val)
+        
+
+
 
 ################
 ## is speaking or not
@@ -741,8 +815,85 @@ for idx_can in range(nb_candidate):
 with open(save_path+'{}_speaking_emotion.pickle'.format(debate), 'wb') as handle:
     	pickle.dump(speaking_info_lst, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
+## Check average
+#emo_avg = [0 for i in range(nb_emotion)]
+#count = [0 for i in range(nb_emotion)]
+#
+#for j in range(nb_candidate):
+#    for i in range(nb_emotion):
+#        emo_avg[i] += np.sum(speaking_info_lst[j][0][0][i])
+#        count[i] += np.sum(speaking_info_lst[j][0][1][i])
+#        emo_avg[i] += np.sum(speaking_info_lst[j][1][0][i])
+#        count[i] += np.sum(speaking_info_lst[j][1][1][i])
+#
+#for i in range(nb_emotion):
+#    emo_avg[i] /= count[i]
+#    
+#x = np.arange(nb_emotion)
+#
+#import matlotlib.pyplot as plt
+#emotion_lst = ['angry', 'disgust', 'fear', 'happy', 'sad', 'surprise', 'neutral']
+#
+#fig, ax = plt.subplots()
+#plt.bar(x, emo_avg)
+#ax.set_ylim(0.02, 0.06)
+#plt.xticks(x, emotion_lst)
+#plt.show()
+#
 
+################
+## Clustering
+################
+cluster_lst = []
+emotion_label_lst = []
 
+for idx_frame in range(nb_frame):
+    delta_x_lst = []
+    range_left = max(0, idx_frame*fps-nb_half)
+    range_right = min(nb_frame_fps15, idx_frame*fps+nb_half)
+    frame = final_table[idx_frame]
+    for idx_frame_t in range(range_left, range_right):
+        # no candidate is on screen
+        if info[idx_frame][3] == '0':
+            continue    
+        for idx_can in range(7, 8):
+            on_screen = frame[nb_col_head+idx_can*nb_total_field] != '-1'
+            has_delta_x = frame[nb_col_head+nb_field+idx_can*nb_total_field] != '-1'
+            ref_dist = float(frame[nb_col_head+(idx_can+1)*nb_total_field-1])
+            if ref_dist == -1:
+                continue
+            if on_screen and has_delta_x:
+                sample= []
+                for idx_frame_t in range(range_left, range_right):
+                    # Append nose, shoulder, elbow, wrist
+                    for i in [0, 2, 3, 4, 5, 6, 7]:
+                        val = combined[idx_frame_t][nb_col_head+nb_field+idx_can*nb_total_field+i]
+                        if val == '-1':
+                            sample.append(0)
+                        else:
+                            val = str2array(val)
+                            dist = get_points_dist(val, np.zeros(2))
+                            sample.append(dist/ref_dist)
+                cluster_lst.append(sample)
+                emo_lst = frame[nb_col_head+idx_can*nb_total_field+6:nb_col_head+idx_can*nb_total_field+13]
+                emotion_label_lst.append(np.argmax(emo_lst))
+                    
+cluster_lst = np.array(cluster_lst) 
+emotion_label_lst = np.array(emotion_label_lst)
+
+from sklearn import svm
+from sklearn.cluster import KMeans
+from sklearn.model_selection import train_test_split
+
+x_train, x_test, y_train, y_test = train_test_split(cluster_lst, emotion_label_lst, test_size=0.3)
+kmeans = KMeans(n_clusters=7, random_state=0).fit(x_train)
+kmeans.labels_[:50]
+
+## SVM
+clf = svm.SVC()
+clf.fit(x_train, y_train)
+
+pred = clf.predict(x_test)
 
 ## Interpolation for missing value
 #mean_val = np.zeros(nb_keypoints-1)
@@ -760,18 +911,6 @@ with open(save_path+'{}_speaking_emotion.pickle'.format(debate), 'wb') as handle
 #CorrMtx(corr, dropDuplicates = True)
 #        
     
-#TODO: Mean delta(x) of the candidate on each emotion
-# Verification of correlation
-#valid_emotion = [[0 for i in range(nb_keypoints-1)] for j in range(nb_emotion)]
-#count = [[0 for i in range(nb_keypoints-1)] for j in range(nb_emotion)]
-#
-#for i in range(len(valid_corr_info_lst)):
-#    emo_lst = valid_corr_info_lst[i][11:]
-#    idx_max = np.argmax(emo_lst)
-#    valid_emotion[idx_max] += valid_corr_info_lst[i][:11]
-#    count[idx_max] += [1 for k in range(nb_keypoints)]
-
-
 
 ###### Verification of ref distance
 ## Need the table Combined
