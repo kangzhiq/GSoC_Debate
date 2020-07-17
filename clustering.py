@@ -9,6 +9,8 @@ Created on Mon Jul 13 08:37:31 2020
 import csv
 import os
 import numpy as np
+import pickle
+
 
 pickle_dir = 'Combined/'
 nb_candidate = 23
@@ -59,25 +61,29 @@ new_field = ['nose',
              'ref_dist']
 
 
-debate = 'Debate3'
-json_pickle_path = 'json_fps15/{}.pickle'.format(debate)
-ref_dist_path = 'candidate/can_ref_dist.pickle'
-csv_path = 'Combined/{}_pose.csv'.format(debate)
-is_speaking_path = 'tables_speaking/{}.csv'.format(debate)
-save_path = 'Combined/' 
-fps=15
-nb_half = fps/2
+# Load data
+clustering_lst = []
+emo_lst = []
+idx_frame_lst = []
+for debate in debate_lst:
+    debate_pickle_path = pickle_dir +  debate + '_clutering_info.pickle'
+    with open(debate_pickle_path, 'rb') as handle:
+        data = pickle.load(handle)
+    for i in range(len(data)):
+        idx, emo, sample = data[i]
+        if not np.all(sample == 0):
+            clustering_lst.append(sample)
+            emo_lst.append(emo)
+            idx_frame_lst.append(debate+'_'+str(idx))
 
-# Read csv
-table = []
-with open(csv_path) as csvfile:
-    reader = csv.reader(csvfile, delimiter=';')
-    for row in reader:
-        table.append(row)
+clustering_lst = np.array(clustering_lst)
 
-# table 0 is the header
-header = table[0]
-final_table = table[1:]
+from sklearn import svm
+from sklearn.cluster import KMeans
+
+kmeans = KMeans(n_clusters=2, random_state=0).fit(clustering_lst)
+kmeans.labels_[:10]
+
 
 
 
