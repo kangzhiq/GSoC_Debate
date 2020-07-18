@@ -136,7 +136,7 @@ for i in range(3, 12):
     debate_lst.append('Debate{}'.format(i))
 
 for debate in debate_lst:
-#    debate = 'Debate6'
+    debate = 'Debate6'
     json_pickle_path = 'json_fps15/{}.pickle'.format(debate)
     ref_dist_path = 'candidate/can_ref_dist.pickle'
     csv_path = 'tables_speaking/{}.csv'.format(debate)
@@ -644,7 +644,7 @@ for debate in debate_lst:
     
     valid_corr_info_lst = []
     for idx_frame in range(nb_frame):
-        for idx_can in range(nb_emotion):
+        for idx_can in range(nb_candidate):
             frame = final_table[idx_frame]
             on_screen = frame[nb_col_head+idx_can*nb_total_field] != '-1'
             if on_screen:
