@@ -135,16 +135,21 @@ debate_lst = ['Debate1Night1', 'Debate1Night2', 'Debate2Night1', 'Debate2Night2'
 for i in range(3, 12):
     debate_lst.append('Debate{}'.format(i))
 
-for debate in debate_lst:
-    debate = 'Debate6'
+for debate in debate_lst[8: 9]:
+#    debate = 'Debate3'
     json_pickle_path = 'json_fps15/{}.pickle'.format(debate)
     ref_dist_path = 'candidate/can_ref_dist.pickle'
-    csv_path = 'tables_speaking/{}.csv'.format(debate)
+    csv_path = 'tables_final/{}.csv'.format(debate)
     is_speaking_path = 'tables_speaking/{}.csv'.format(debate)
     save_path = 'Combined/' 
     fps=15
     nb_half = fps/2
     
+    nb_candidate = 23
+    # number of feld for each candidate in csv
+    nb_field = 15
+    nb_col_head = 3
+    idx_num_can = 1
     
     print 'Debate: ', debate
     
@@ -195,7 +200,7 @@ for debate in debate_lst:
     count_interpolation = 0
     count_valid_frame = 0
     for i in tqdm(np.arange(1, nb_frame-1)):
-        if info[i][1] == '-1':
+        if info[i][idx_num_can] == '0':
             continue    
         count_valid_frame += 1
     
@@ -204,7 +209,7 @@ for debate in debate_lst:
             for idx_kp in range(len(keypoints_lst[idx_frame_t])):
                 kp = keypoints_lst[idx_frame_t][idx_kp]
                 if np.any(np.all(kp[:, :2] == 0, axis = 1)):
-                    if info[i-1][1]=='-1' or info[i+1][1]=='-1':
+                    if info[i-1][idx_num_can]=='0' or info[i+1][idx_num_can]=='0':
                         break
                     res = interpolate(kp, keypoints_lst[idx_frame_t-1], keypoints_lst[idx_frame_t+1])
                     if res == 1:
@@ -218,10 +223,6 @@ for debate in debate_lst:
     ####################
     ## Combine info:
     ####################
-    nb_candidate = 23
-    # number of feld for each candidate in csv
-    nb_field = 15
-    nb_col_head = 5
     
     can_lst = []
     for i in range(nb_candidate):
@@ -243,11 +244,11 @@ for debate in debate_lst:
         for idx_frame_t in range(range_left, range_right):
             combined[idx_frame_t][:nb_col_head] = info[idx_frame][:nb_col_head]
             # no candidate is on screen
-            if info[idx_frame][3] == '0':
+            if info[idx_frame][idx_num_can] == '0':
                 continue
             keypoints_frame = keypoints_lst[idx_frame_t]
-            nb_on_screen = int(info[idx_frame][3])
-            if len(keypoints_frame) != nb_on_screen:
+            nb_on_screen = int(info[idx_frame][idx_num_can])
+            if len(keypoints_frame) -2 != nb_on_screen:
                 continue
             for idx_can in range(nb_candidate):
                 on_screen = info[idx_frame][nb_col_head+idx_can*nb_field] != '-1'
@@ -291,6 +292,9 @@ for debate in debate_lst:
     print 'number of opse info assigned: ', count_combined                       
     
     
+#    with open(save_path+'{}_combined.pickle'.format(debate), 'wb') as handle:
+#        	pickle.dump(combined, handle, protocol=pickle.HIGHEST_PROTOCOL)
+#    
                 
     ####################
     ## Verification combine
@@ -383,7 +387,7 @@ for debate in debate_lst:
         range_right = min(nb_frame_fps15, idx_frame*fps+nb_half)
         for idx_frame_t in range(range_left, range_right):
             # no candidate is on screen
-            if info[idx_frame][3] == '0':
+            if info[idx_frame][idx_num_can] == '0':
                 continue
     
             # Calculate the delta_x based on current frame and the frame after
@@ -536,7 +540,7 @@ for debate in debate_lst:
     # nb_candidate * nb_emotion * nb_keypoints
     nb_emotion = 7
     emo_lst = []
-    for i in range(8, 15):
+    for i in range(nb_col_head+6, nb_col_head+13):
         head = header[i].split('_')
         emo_lst.append(head[1])
         
@@ -637,8 +641,7 @@ for debate in debate_lst:
     
     idx_can = 7
     idx_select = np.array([False for i in range(nb_total_field)])
-    idx_select[6:13] = True
-    idx_select[15:15+nb_keypoints] = True
+    idx_select[6:15+nb_keypoints] = True
     # Exclude neck
     idx_select[16] = False
     
@@ -674,14 +677,14 @@ for debate in debate_lst:
     idx_end = 1
     
     while idx_end < nb_frame_fps15:
-        while combined[idx_start][3] != '1' and idx_start < nb_frame_fps15-2:
+        while combined[idx_start][idx_num_can] != '1' and idx_start < nb_frame_fps15-2:
             idx_start += 1
         if idx_start >= nb_frame_fps15-2:
             break
         
         idx_end = idx_start + 1
-        candidates = combined[idx_start][4]
-        while combined[idx_end][4] == candidates and idx_end < nb_frame_fps15-1:
+        candidates = combined[idx_start][2]
+        while combined[idx_end][2] == candidates and idx_end < nb_frame_fps15-1:
             idx_end += 1
         
         if idx_end - idx_start < 30:
@@ -692,9 +695,9 @@ for debate in debate_lst:
             on_screen = combined[idx_start][nb_col_head+idx_can*nb_total_field] != '-1'
             if on_screen:
                 break
-        val_all = np.zeros(18)
-        count_all = np.zeros(18)
-        count_all[-7:] = idx_end - idx_start
+        val_all = np.zeros(20)
+        count_all = np.zeros(20)
+        count_all[-9:] = idx_end - idx_start
         for idx_frame_t in range(idx_start, idx_end):
             ref_dist = float(combined[idx_frame_t][nb_col_head+(idx_can+1)*nb_total_field-1])
             if ref_dist == -1:
@@ -706,8 +709,8 @@ for debate in debate_lst:
             temp = info[idx_select].astype(float)
             val = np.zeros_like(temp)
             count = np.zeros_like(temp)
-            val[-nb_emotion:] = temp[:nb_emotion]
-            val[:-nb_emotion] = temp[nb_emotion:]
+            val[-(nb_emotion+2):] = temp[:(nb_emotion+2)]
+            val[:-(nb_emotion+2)] = temp[(nb_emotion+2):]
             for i in range(11):
                 if val[i] == -1:
                     val[i] = 0
@@ -717,7 +720,7 @@ for debate in debate_lst:
             val_all += val
             count_all += count
                 
-        for i in range(18):
+        for i in range(20):
             if count_all[i] != 0:
                 val_all[i] = val_all[i] / count_all[i]
             else:
@@ -743,7 +746,7 @@ for debate in debate_lst:
     ## Clustering
     ##############
     clustering_lst = []
-    nb_frame_window = 30
+    nb_frame_window = 15
     
     idx_select = np.array([False for i in range(nb_total_field)])
     idx_select[nb_field:nb_field+8] = True
@@ -751,14 +754,14 @@ for debate in debate_lst:
     idx_select[16] = False
     nb_select = idx_select.sum()
     
-    for idx_frame_t in range(0, nb_frame_fps15, 10):
-        if combined[idx_frame_t][3] != '1':
+    for idx_frame_t in range(0, nb_frame_fps15, 5):
+        if combined[idx_frame_t][idx_num_can] != '1':
             continue
         
-        candidates = combined[idx_frame_t][4]
+        candidates = combined[idx_frame_t][2]
         same_shot = True
         for i in range(idx_frame_t, idx_frame_t+nb_frame_window):
-            if combined[i][4] != candidates:         
+            if combined[i][2] != candidates:         
                 same_shot = False
                 break
         if not same_shot:
@@ -766,11 +769,12 @@ for debate in debate_lst:
     #    idx_frame = (idx_frame_t + 7) / 15
         frame = combined[idx_frame_t]
     
-        for idx_can in range(7, 8):
+        for idx_can in range(nb_candidate):
             on_screen = frame[nb_col_head+idx_can*nb_total_field] != '-1'
             if on_screen:
                 sample = np.zeros(nb_frame_window * nb_select)
                 emo_lst = np.zeros(nb_emotion)
+                emo_count = 0
                 for i, idx in enumerate(range(idx_frame_t, idx_frame_t+nb_frame_window)):
                     info = combined[idx][nb_col_head+idx_can*nb_total_field:nb_col_head+(1+idx_can)*nb_total_field] 
                     info = np.array(info)
@@ -783,9 +787,11 @@ for debate in debate_lst:
                             val[j] = 0
                     sample[i*nb_select:(i+1)*nb_select] = val
                     emo_lst += info[6:13].astype(float)
+                    emo_count += 1
+                    
                 
-                emo = np.argmax(emo_lst)
-                clustering_lst.append((idx_frame_t, emo, sample))
+                emo_lst = emo_lst / emo_count
+                clustering_lst.append((idx_frame_t, idx_can, emo_lst, sample))
     
 #    clustering_lst = np.array(clustering_lst)
     
@@ -862,8 +868,7 @@ for debate in debate_lst:
     #CorrMtx(corr, dropDuplicates = True)
     #        
         
-         
-    
+            
     
     
     ################

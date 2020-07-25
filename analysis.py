@@ -45,29 +45,29 @@ can_lst =   ['John_Delaney',
 
 new_field = ['nose', 
              'neck', 
-             'rshoulder', 
-             'relbow', 
-             'rwrist', 
-             'lshoulder', 
-             'leldow', 
-             'lwrist', 
-             'reye', 
-             'leye', 
-             'rear', 
-             'lear', 
+             'right shoulder', 
+             'right elbow', 
+             'right wrist', 
+             'left shoulder', 
+             'left eldow', 
+             'left wrist', 
+             'right eye', 
+             'left eye', 
+             'right ear', 
+             'left ear', 
              'ref_dist']
 
 valid_keypoints = ['nose', 
-                 'rshoulder', 
-                 'relbow', 
-                 'rwrist', 
-                 'lshoulder', 
-                 'leldow', 
-                 'lwrist', 
-                 'reye', 
-                 'leye', 
-                 'rear', 
-                 'lear']
+                 'right shoulder', 
+                 'right elbow', 
+                 'right wrist', 
+                 'left shoulder', 
+                 'left eldow', 
+                 'left wrist', 
+                 'right eye', 
+                 'left eye', 
+                 'right ear', 
+                 'left ear']
 pose_lst = []
 for debate in debate_lst:
     debate_pickle_path = pickle_dir +  debate + '_per_emotion.pickle'
@@ -108,7 +108,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 ######### 4 keypoints
-idx_can = 18
+idx_can = 11
 data = np.array(pose_avg[idx_can])
 std_can = np.array(std[idx_can])
 
@@ -120,25 +120,26 @@ length = len(data)
 x_labels = emotion_lst
 
 # Set plot parameters
-fig, ax = plt.subplots()
+fig, ax = plt.subplots(figsize=(5, 3.5))
 width = 0.2 # width of bar
 x = np.arange(length)
 
 ax.bar(x, data[:,0], width, color='#000080', label='nose', yerr=data_std[:,0])
-ax.bar(x + width, data[:,2], width, color='#0F52BA', label='rshoulder', yerr=data_std[:,1])
-ax.bar(x + (2 * width), data[:,3], width, color='#6593F5', label='relbow', yerr=data_std[:,2])
-ax.bar(x + (3 * width), data[:,4], width, color='#73C2FB', label='rwrist', yerr=data_std[:,3])
+ax.bar(x + width, data[:,2], width, color='#0F52BA', label='right shoulder', yerr=data_std[:,1])
+ax.bar(x + (2 * width), data[:,3], width, color='#6593F5', label='right elbow', yerr=data_std[:,2])
+ax.bar(x + (3 * width), data[:,4], width, color='#73C2FB', label='right wrist', yerr=data_std[:,3])
       
        
 ax.set_ylabel('Delta_x')
 ax.set_ylim(0, 0.3)
 ax.set_xticks(x + width + width/2)
 ax.set_xticklabels(x_labels)
-ax.set_xlabel('Emotion')
-ax.set_title(can_lst[idx_can])
+#ax.set_xlabel('Emotion')
+ax.set_title(can_lst[idx_can].replace('_', ' '))
 ax.legend()
 plt.grid(True, 'major', 'y', ls='--', lw=1, c='k', alpha=.3)
 
+#plt.aufmt_xdate()
 fig.tight_layout()
 plt.show()
 
@@ -275,19 +276,22 @@ for i in range(nb_candidate):
     if count != 0:
         can_avg[i] /= count
 
+can_avg = np.array(can_avg)
 can_aggre_avg = np.mean(can_avg)
-
+can_lst_np = np.array(can_lst)
 ## Plot
 x = np.arange(nb_candidate)
-money = can_avg
+
+select_idx = np.argsort(can_avg)
+select_idx = select_idx[::-1]
 
 fig, ax = plt.subplots()
-fig.set_size_inches(10, 8,forward=True )
-plt.bar(x, money)
-ax.set_ylim(0.02, 0.1)
+fig.set_size_inches(10, 5,forward=True )
+plt.bar(x, can_avg[select_idx])
+ax.set_ylim(0.02, 0.085)
 plt.hlines(can_aggre_avg, xmin=0, xmax =nb_candidate-1 ,linestyles='dashed')
-plt.xticks(x, can_lst)
-ax.set_title('Average delta_x of each candidate')
+plt.xticks(x, can_lst_np[select_idx])
+ax.set_title('Average delta(x) of each candidate')
 fig.autofmt_xdate()
 plt.show()
 
@@ -363,10 +367,13 @@ corr = np.corrcoef(corre_lst, rowvar=False)
 CorrMtx(corr, dropDuplicates = True)
 
 
-#correlation on each complete samples, not on average
+################
+## Correlation on each shot
+################
+#correlation on each complete samples of each shot, not on average
 valid_corre_info_lst = []
 for debate in debate_lst:
-    debate_pickle_path = pickle_dir +  debate + '_valid_corr_info.pickle'
+    debate_pickle_path = pickle_dir +  debate + '_shot_corr_info.pickle'
     with open(debate_pickle_path, 'rb') as handle:
         corre = pickle.load(handle)
     if len(corre) != 0:
@@ -375,7 +382,86 @@ for debate in debate_lst:
 
 valid_corre_info_lst = np.array(valid_corre_info_lst)
 corr = np.corrcoef(valid_corre_info_lst, rowvar=False)
+corr[0, 0] = -1
 CorrMtx(corr, dropDuplicates = True)
+
+
+
+idx_select = np.array([0, 2, 5, 1, 6, 3, 4])
+crop_corr  = np.array(corr[11:, :11])
+emotion_lst_np =  ['angry', 'disgust', 'fear', 'happy', 'sad', 'surprise', 'neutral', 'pitch', 'loudness']
+emotion_lst_np = np.array(emotion_lst_np)
+sns.set_style(style = 'white')
+
+# Set up  matplotlib figure
+f, ax = plt.subplots(figsize=(8, 4))
+
+cmap = sns.diverging_palette(250, 10, as_cmap=True, n = 10)
+
+ax = sns.heatmap(crop_corr[idx_select], cmap=cmap, center=0,
+                 yticklabels=emotion_lst_np[idx_select],
+                 linewidth=.5, cbar_kws={"shrink": .8})
+
+ax.set_xticklabels(valid_keypoints, rotation=35, horizontalalignment='right')
+ax.set_ylabel('Face', fontsize=14)
+ax.set_xlabel('Body', fontsize=14)
+
+f.savefig('correlation.png'.format(can_lst[idx_can]), bbox_inches='tight')
+
+#################################
+#### Regroup keft and right
+#################################
+valid_keypoints_rg = ['nose', 
+                 'shoulder', 
+                 'elbow', 
+                 'wrist', 
+                 'eye', 
+                 'ear']
+idx_select = np.array([0, 2, 5, 1, 6, 3, 4])
+emotion_lst_np =  ['angry', 'disgust', 'fear', 'happy', 'sad', 'surprise', 'neutral', 'pitch', 'loudness']
+emotion_lst_np = np.array(emotion_lst_np)
+
+valid_corre_info_rg_lst = []
+for debate in debate_lst:
+    debate_pickle_path = pickle_dir +  debate + '_shot_corr_info.pickle'
+    with open(debate_pickle_path, 'rb') as handle:
+        corre = pickle.load(handle)
+    if len(corre) != 0:
+        for i in range(len(corre)):
+            info = corre[i]
+            val = np.zeros(13)
+            val[6:] = info[11:18]
+            val[0] = info[0]
+            for j in range(5):
+                count = 0
+                value = 0
+                if info[1+2*j] != 0:
+                    value += info[1+2*j]
+                    count += 1
+                if info[2+2*j] != 0:
+                    value += info[2+2*j]
+                    count += 1
+                if count != 0:
+                    val[j+1] = value / count
+                    
+            valid_corre_info_rg_lst.append(val)
+
+valid_corre_info_rg_lst = np.array(valid_corre_info_rg_lst)
+corr = np.corrcoef(valid_corre_info_rg_lst, rowvar=False)
+crop_corr  = np.array(corr[6:, :6])
+
+f, ax = plt.subplots(figsize=(8, 4))
+
+cmap = sns.diverging_palette(250, 10, as_cmap=True, n = 10)
+
+ax = sns.heatmap(crop_corr[idx_select], cmap=cmap, center=0,
+                 yticklabels=emotion_lst_np[idx_select],
+                 linewidth=.5, cbar_kws={"shrink": .8})
+ax.set_ylabel('Face', fontsize=14)
+ax.set_xlabel('Body', fontsize=14)
+ax.set_xticklabels(valid_keypoints_rg, rotation=35, horizontalalignment='right')
+f.savefig('correlation_rg.png'.format(can_lst[idx_can]), bbox_inches='tight')
+
 
 
 ################################
@@ -388,7 +474,7 @@ for debate in debate_lst:
         data = pickle.load(handle)
     speaking_info_lst.append(data)
 
-idx_can = 7
+idx_can = 16
 
 speaking_lst = np.array([[0 for i in range(nb_keypoints)] for j in range(nb_emotion)]).astype(float)
 count_speaking_lst = np.array([[0 for i in range(nb_keypoints)] for j in range(nb_emotion)]).astype(float)
@@ -416,7 +502,7 @@ for j in range(nb_emotion):
 ## Plot            
 ######### 4 keypoints
 
-data = np.array(no_speaking_lst) 
+data = np.array(speaking_lst) 
     
 length = len(data)
 x_labels = emotion_lst
@@ -437,7 +523,7 @@ ax.set_ylim(0, 0.3)
 ax.set_xticks(x + width + width/2)
 ax.set_xticklabels(x_labels)
 ax.set_xlabel('Emotion')
-ax.set_title(can_lst[idx_can]+': Not speaking')
+ax.set_title(can_lst[idx_can]+': Speaking')
 ax.legend()
 plt.grid(True, 'major', 'y', ls='--', lw=1, c='k', alpha=.3)
 
@@ -471,3 +557,29 @@ ax.set_ylim(0.02, 0.05)
 plt.show()
 
 ## TODO:Verify fear
+
+##################
+## TODO: Average emotion score
+##################
+
+idx_can = 12
+emo_val_lst = [0 for i in range(0, 7)]
+count = 0 
+for debate in debate_lst:
+    debate_pickle_path = pickle_dir +  debate + '_combined.pickle'
+    with open(debate_pickle_path, 'rb') as handle:
+        combined = pickle.load(handle)
+
+    nb_frame_fps15 = len(combined)
+    
+    for idx_frame in range(nb_frame_fps15):
+        frame = combined[idx_frame]
+        on_screen = frame[nb_col_head+idx_can*nb_total_field] != '-1'
+        if on_screen:
+            info = frame[nb_col_head+idx_can*nb_total_field:nb_col_head+(1+idx_can)*nb_total_field] 
+            info = np.array(info)
+            for i in range(7):
+                emo_val_lst[i] += info[7+i]
+            count += 1
+
+

@@ -63,6 +63,7 @@ new_field = ['nose',
 
 # Load data
 clustering_lst = []
+idx_c_lst = []
 emo_lst = []
 idx_frame_lst = []
 for debate in debate_lst:
@@ -70,21 +71,86 @@ for debate in debate_lst:
     with open(debate_pickle_path, 'rb') as handle:
         data = pickle.load(handle)
     for i in range(len(data)):
-        idx, emo, sample = data[i]
+        idx, idx_c, emo, sample = data[i]
         if not np.all(sample == 0):
             clustering_lst.append(sample)
             emo_lst.append(emo)
-            idx_frame_lst.append(debate+'_'+str(idx))
+            idx_c_lst.append(idx_c)
+            idx_frame = idx / 15
+            idx_supple = idx % 15
+            idx_frame_lst.append(debate+'_Frame'+str(idx_frame)+'_'+str(idx_supple)+'_'+can_lst[idx_c])
+
 
 clustering_lst = np.array(clustering_lst)
+idx_c_lst = np.array(idx_c_lst)
+emo_lst = np.array(emo_lst)
+idx_frame_lst = np.array(idx_frame_lst)
+emo_label_lst = np.array([np.argmax(emo_lst[i]) for i in range(len(emo_lst))])
+
+## Discard the first 30%
+sum_lst = clustering_lst.sum(axis = 1)
+sort_idx_lst = np.argsort(sum_lst)
+nb_discard = int(len(sort_idx_lst)/10 * 3)
+kpt_idx = sort_idx_lst[nb_discard:]
+
+kpt_cluster_lst = clustering_lst[kpt_idx]
+kpt_idx_c_lst = idx_c_lst[kpt_idx]
+kpt_emo_lst = emo_lst[kpt_idx]
+kpt_emo_label_lst = emo_label_lst[kpt_idx]
+kpt_idx_frame_lst = idx_frame_lst[kpt_idx]
+
+
+# Recover the class of each frame
 
 from sklearn import svm
 from sklearn.cluster import KMeans
+from time import time
 
-kmeans = KMeans(n_clusters=2, random_state=0).fit(clustering_lst)
-kmeans.labels_[:10]
+tt = time()
+kmeans = KMeans(n_clusters=100, random_state=0).fit(kpt_cluster_lst)
+print("Time: {}".format(time() - tt))
+
+kmeans.labels_[-20:]
+
+## Addign cluster to initial list
+res_cluster = np.zeros(len(clustering_lst))
+res_cluster -= 1
+for i in range(len(kpt_idx)):
+    idx =int( kpt_idx[i])
+    res_cluster[idx] = kmeans.labels_[i]
+
+idx_emo = 0
+idx_emo_lst = emo_label_lst == idx_emo
+a = res_cluster[idx_emo_lst]
+
+unique, counts = np.unique(a, return_counts=True)
+print np.asarray((unique[1:], counts[1:])).T
+
+kpt_idx_frame_lst[kmeans.labels_==63][-30:]
+
+for i in range(100):
+    idx_cluster = i
+    b = emo_label_lst[res_cluster == idx_cluster]
+    unique, counts = np.unique(b, return_counts=True)
+    print np.argmax((emo_lst[res_cluster == idx_cluster].mean(axis=0))[:-1])
+    if np.argmax(emo_lst[res_cluster == idx_cluster].mean(axis=0)[:-1]) == 3:
+        break
+i
+print np.asarray((unique, counts)).T
+
+emo_lst[res_cluster == idx_cluster].mean(axis=0)
 
 
+kpt_idx_frame_lst[kmeans.labels_ == 2][-20:]
+
+np.where(idx_frame_lst == 'Debate6_Frame1286_0_Elizabeth_Warren')
+idx_frame_lst[110299-5:110299+5]
+kmeans.labels_[110299-5:110299+5]
+kpt_idx_frame_lst[kmeans.labels_ == 27][-30:]
+
+### We can also check the candidate in first quater and last quater
+
+kpt_idx_c_lst[-100:]
 
 ###################################
 ## Kmeans with cross correlation
